@@ -32,11 +32,23 @@
 ```
 Usuario → UI (lista / detalle / admin posts / chat)
               ↓
-       Server Actions / Route Handlers
+       Server Components / Server Actions / Route Handlers
          ├─ Neon Postgres (posts CRUD)
          ├─ Indexer: chunk → embed → post_chunks
          └─ RAG chat: embed query → retrieve chunks → LLM (AI Gateway)
 ```
+
+### Acceso a la DB
+
+**Nunca desde el client.** `DATABASE_URL` solo en server (`lib/db/`).
+
+| Caso | Mecanismo |
+|------|-----------|
+| Lecturas (lista/detalle) | Server Components → `lib/db` |
+| Mutaciones CRUD | Server Actions → `lib/db` (+ reindex si publish) |
+| Chat RAG (streaming) | Route Handler `app/api/chat` → retrieve + LLM |
+
+No envolver todo el CRUD en API routes: en App Router alcanza con server components/actions. Las route handlers quedan para HTTP explícito (stream, webhooks, clients externos).
 
 ## Modelo de datos (MVP)
 
