@@ -84,6 +84,6 @@ docs/                # harness + estándares
 
 ## Secrets
 
-- `DATABASE_URL` — Neon (branch `dev` en local; prod/preview en Vercel)
+- `DATABASE_URL` — Postgres local en desarrollo; Neon en Vercel (prod/preview)
 - `AI_GATEWAY_API_KEY` — Vercel AI Gateway
 - Nunca `NEXT_PUBLIC_*` para estas keys
