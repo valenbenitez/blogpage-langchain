@@ -4,6 +4,8 @@ import { PostCard } from "@/entities/post/ui/PostCard";
 import { listPosts } from "@/lib/db/posts";
 import type { Post } from "@/lib/posts/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function BlogPage() {
   const posts: Post[] = await listPosts();
 

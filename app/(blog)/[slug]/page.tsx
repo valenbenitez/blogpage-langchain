@@ -7,6 +7,8 @@ import ReactMarkdown from "react-markdown";
 import { getPostBySlug } from "@/lib/db/posts";
 import type { PostStatus } from "@/lib/posts/types";
 
+export const dynamic = "force-dynamic";
+
 type BlogDetailPageProps = {
   params: Promise<{ slug: string }>;
 };

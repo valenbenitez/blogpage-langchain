@@ -5,6 +5,8 @@ import { cache } from "react";
 import { EditPostForm } from "@/entities/post/ui/EditPostForm";
 import { getPostBySlug } from "@/lib/db/posts";
 
+export const dynamic = "force-dynamic";
+
 type EditPostPageProps = {
   params: Promise<{ slug: string }>;
 };
