@@ -13,6 +13,30 @@ export type ReplacePostChunkInput = {
   };
 };
 
+export type SimilarChunk = {
+  id: string;
+  post_id: string;
+  chunk_index: number;
+  content: string;
+  metadata: {
+    title: string;
+    slug: string;
+  };
+  similarity: number;
+};
+
+type SimilarChunkRow = {
+  id: string;
+  post_id: string;
+  chunk_index: number;
+  content: string;
+  metadata: {
+    title: string;
+    slug: string;
+  } | null;
+  similarity: number;
+};
+
 function toVectorLiteral(embedding: number[]): string {
   if (embedding.length !== EMBEDDING_DIMENSIONS) {
     throw new Error(
@@ -62,3 +86,34 @@ export async function replacePostChunks(
     }
   });
 }
+
+export async function searchSimilarChunks(
+  embedding: number[],
+  limit = 5,
+): Promise<SimilarChunk[]> {
+  const vector = toVectorLiteral(embedding);
+  const rows = await sql<SimilarChunkRow[]>`
+    select
+      c.id,
+      c.post_id,
+      c.chunk_index,
+      c.content,
+      c.metadata,
+      1 - (c.embedding <=> ${vector}::vector) as similarity
+    from post_chunks c
+    inner join posts p on p.id = c.post_id
+    where p.status = 'published'
+    order by c.embedding <=> ${vector}::vector
+    limit ${limit}
+  `;
+
+  return rows.map((row) => ({
+    id: row.id,
+    post_id: row.post_id,
+    chunk_index: row.chunk_index,
+    content: row.content,
+    metadata: row.metadata ?? { title: "", slug: "" },
+    similarity: Number(row.similarity),
+  }));
+}
+

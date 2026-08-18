@@ -3,27 +3,17 @@ import "server-only";
 import { OpenAIEmbeddings } from "@langchain/openai";
 
 import {
+  AI_GATEWAY_BASE_URL,
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
 } from "@/lib/ai/constants";
+import { getGatewayApiKey } from "@/lib/ai/gateway";
 
 export { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL };
 
-const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
-
-function getApiKey(): string {
-  const apiKey = process.env.AI_GATEWAY_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("AI_GATEWAY_API_KEY is not set");
-  }
-
-  return apiKey;
-}
-
 function getEmbeddingsClient(): OpenAIEmbeddings {
   return new OpenAIEmbeddings({
-    apiKey: getApiKey(),
+    apiKey: getGatewayApiKey(),
     model: EMBEDDING_MODEL,
     dimensions: EMBEDDING_DIMENSIONS,
     configuration: {
