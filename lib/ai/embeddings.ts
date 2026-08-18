@@ -2,8 +2,12 @@ import "server-only";
 
 import { OpenAIEmbeddings } from "@langchain/openai";
 
-export const EMBEDDING_MODEL = "openai/text-embedding-3-small";
-export const EMBEDDING_DIMENSIONS = 1536;
+import {
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+} from "@/lib/ai/constants";
+
+export { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL };
 
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 

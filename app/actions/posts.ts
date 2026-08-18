@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { indexPost, unindexPost } from "@/lib/ai/index-post";
 import { createPost, getPostById, updatePost } from "@/lib/db/posts";
-import type { CreatePostInput, Post } from "@/lib/posts/types";
+import type { CreatePostInput, Post, PostStatus } from "@/lib/posts/types";
 
 type ActionResult<T> =
   | { success: true; data: T }
@@ -43,6 +44,20 @@ const updatePostSchema = z
     message: "No fields to update",
   });
 
+async function syncPostIndex(
+  post: Post,
+  previousStatus?: PostStatus,
+): Promise<void> {
+  if (post.status === "published") {
+    await indexPost(post);
+    return;
+  }
+
+  if (previousStatus === "published") {
+    await unindexPost(post.id);
+  }
+}
+
 function toErrorMessage(error: unknown): string {
   if (
     error &&
@@ -74,6 +89,7 @@ export async function createPostAction(
 
   try {
     const post = await createPost(parsed.data);
+    await syncPostIndex(post);
     revalidatePath("/");
     revalidatePath("/admin/posts");
     return { success: true, data: post };
@@ -108,6 +124,8 @@ export async function updatePostAction(
     if (!post) {
       return { success: false, error: "Post not found" };
     }
+
+    await syncPostIndex(post, previousPost?.status);
 
     revalidatePath("/");
     revalidatePath("/admin/posts");
