@@ -1,5 +1,5 @@
 -- posts: source of truth for blog articles
--- Run against Neon (SQL Editor or psql). post_chunks comes in the RAG tranche.
+-- Run against Postgres (pgAdmin / Neon). See also schema-post-chunks.sql.
 
 create extension if not exists "pgcrypto";
 
