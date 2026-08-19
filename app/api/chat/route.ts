@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { streamRagAnswer } from "@/lib/ai/rag";
+import { consumeChatSend, getChatQuota } from "@/lib/chat/message-limit";
 
 const chatBodySchema = z.object({
   messages: z
@@ -13,6 +14,24 @@ const chatBodySchema = z.object({
     .min(1),
 });
 
+function quotaHeaders(quota: {
+  limit: number | null;
+  remaining: number | null;
+}): HeadersInit {
+  return {
+    "X-Chat-Limit": quota.limit === null ? "" : String(quota.limit),
+    "X-Chat-Remaining":
+      quota.remaining === null ? "" : String(quota.remaining),
+  };
+}
+
+export async function GET() {
+  const quota = await getChatQuota();
+  return Response.json(quota, {
+    headers: quotaHeaders(quota),
+  });
+}
+
 export async function POST(request: Request) {
   const json: unknown = await request.json();
   const parsed = chatBodySchema.safeParse(json);
@@ -21,6 +40,19 @@ export async function POST(request: Request) {
     return Response.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid request" },
       { status: 400 },
+    );
+  }
+
+  const quota = await consumeChatSend();
+
+  if (!quota) {
+    const current = await getChatQuota();
+    return Response.json(
+      { error: "Alcanzaste el límite de mensajes." },
+      {
+        status: 429,
+        headers: quotaHeaders(current),
+      },
     );
   }
 
@@ -49,6 +81,7 @@ export async function POST(request: Request) {
         "Content-Type": "text/plain; charset=utf-8",
         "X-Retrieved-Slugs": slugs.join(","),
         "Cache-Control": "no-store",
+        ...quotaHeaders(quota),
       },
     });
   } catch (error) {

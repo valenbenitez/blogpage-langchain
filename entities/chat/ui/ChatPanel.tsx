@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -31,19 +31,81 @@ async function readErrorMessage(response: Response): Promise<string> {
   return "No se pudo obtener una respuesta.";
 }
 
+type ChatQuotaState = {
+  limit: number | null;
+  remaining: number | null;
+};
+
+function quotaFromHeaders(headers: Headers): ChatQuotaState {
+  const limitRaw = headers.get("X-Chat-Limit");
+  const remainingRaw = headers.get("X-Chat-Remaining");
+  const limit =
+    limitRaw && limitRaw !== "" ? Number.parseInt(limitRaw, 10) : null;
+  const remaining =
+    remainingRaw && remainingRaw !== ""
+      ? Number.parseInt(remainingRaw, 10)
+      : null;
+
+  return {
+    limit: Number.isFinite(limit) ? limit : null,
+    remaining: Number.isFinite(remaining) ? remaining : null,
+  };
+}
+
 export function ChatPanel({ variant = "page" }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [quota, setQuota] = useState<ChatQuotaState>({
+    limit: null,
+    remaining: null,
+  });
   const listRef = useRef<HTMLDivElement>(null);
   const isWidget = variant === "widget";
+  const isExhausted = quota.remaining === 0;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadQuota() {
+      try {
+        const response = await fetch("/api/chat", { method: "GET" });
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        const body: unknown = await response.json();
+        if (
+          !cancelled &&
+          body &&
+          typeof body === "object" &&
+          "remaining" in body &&
+          "limit" in body
+        ) {
+          setQuota({
+            limit: typeof body.limit === "number" ? body.limit : null,
+            remaining:
+              typeof body.remaining === "number" ? body.remaining : null,
+          });
+        }
+      } catch {
+        // Quota is best-effort; the server still enforces the limit.
+      }
+    }
+
+    void loadQuota();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const content = input.trim();
-    if (!content || isPending) {
+    if (!content || isPending || isExhausted) {
       return;
     }
 
@@ -70,8 +132,11 @@ export function ChatPanel({ variant = "page" }: ChatPanelProps) {
       });
 
       if (!response.ok || !response.body) {
+        setQuota(quotaFromHeaders(response.headers));
         throw new Error(await readErrorMessage(response));
       }
+
+      setQuota(quotaFromHeaders(response.headers));
 
       const slugs = (response.headers.get("X-Retrieved-Slugs") ?? "")
         .split(",")
@@ -205,7 +270,7 @@ export function ChatPanel({ variant = "page" }: ChatPanelProps) {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <textarea
             className="min-h-16 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-foreground/20"
-            disabled={isPending}
+            disabled={isPending || isExhausted}
             id="chat-input"
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
@@ -220,12 +285,19 @@ export function ChatPanel({ variant = "page" }: ChatPanelProps) {
           />
           <button
             className="inline-flex shrink-0 items-center justify-center rounded-lg bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isPending || input.trim() === ""}
+            disabled={isPending || isExhausted || input.trim() === ""}
             type="submit"
           >
             {isPending ? "Enviando…" : "Enviar"}
           </button>
         </div>
+        {quota.limit !== null && quota.remaining !== null ? (
+          <p className="mt-2 text-xs text-muted">
+            {isExhausted
+              ? "Llegaste al límite de mensajes."
+              : `${quota.remaining} de ${quota.limit} mensajes restantes.`}
+          </p>
+        ) : null}
       </form>
     </div>
   );
