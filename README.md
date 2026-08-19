@@ -77,9 +77,6 @@ ADMIN_PIN=1234
 # CHAT_MESSAGE_LIMIT=2
 ```
 
-`DATABASE_URL` y `AI_GATEWAY_API_KEY` son solo server. Nunca `NEXT_PUBLIC_*`.
-
-La key de AI Gateway se crea en el dashboard de Vercel (AI Gateway). El PIN es el que pedís al crear/editar posts.
 
 ### 4. Dev server
 
