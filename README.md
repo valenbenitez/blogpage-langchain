@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# blogpage-rag
 
-## Getting Started
+Blog con artículos en Postgres y un chat RAG sobre los posts publicados.
 
-First, run the development server:
+Podés crear y editar posts en Markdown (con un PIN), publicarlos, y preguntar por el contenido desde un chat flotante. Las respuestas salen solo del índice de artículos y citan el slug.
+
+Live: [blogpage-langchain.vercel.app](https://blogpage-langchain.vercel.app)
+
+## Cómo está hecho
+
+**Stack**
+
+- **Next.js 16** (App Router) + TypeScript + Tailwind
+- **Postgres** local en desarrollo; **Neon** + **pgvector** en producción
+- **LangChain.js** + **Vercel AI Gateway** para embeddings y el modelo de chat
+- Driver **postgres.js** (`lib/db`)
+
+**Datos**
+
+- `posts` es la fuente de verdad (título, slug, Markdown, `draft` | `published`)
+- `post_chunks` es un índice derivado: fragmentos + embeddings. Se regenera al publicar o al editar un post published
+
+**Capas**
+
+- Lecturas: Server Components → `lib/db/posts.ts`
+- Altas/edits: Server Actions (`app/actions/posts.ts`) con validación Zod
+- Chat: `POST /api/chat` con streaming (no API REST para el CRUD)
+
+**Pipeline RAG**
+
+1. Al publicar: `chunkText` → `embedDocuments` (`text-embedding-3-small`) → `post_chunks`
+2. En cada pregunta: `embedQuery` → búsqueda cosine en pgvector (solo published) → prompt con contexto → `gpt-4o-mini` vía AI Gateway
+3. LangChain entra en embeddings y en el chat model. El chunker y el SQL de retrieve son propios
+
+**Extras**
+
+- PIN (`ADMIN_PIN`) para `/create` y `/:slug/edit`
+- Tope de mensajes del chat por visitante (`CHAT_MESSAGE_LIMIT`, default 2)
+
+Detalle de arquitectura: [`docs/architecture.md`](./docs/architecture.md).
+
+## Correr en local
+
+### Requisitos
+
+- Node.js 20+
+- Postgres con la extensión **pgvector** (pgAdmin está bien)
+
+### 1. Instalar
+
+```bash
+npm install
+```
+
+### 2. Base de datos
+
+Creá una database (por ejemplo `blogpage_rag`) y corré, en ese orden:
+
+1. `lib/posts/schema.sql`
+2. `lib/posts/schema-post-chunks.sql`
+
+Si pgvector no está habilitado:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### 3. Variables de entorno
+
+En la raíz del repo, `.env` o `.env.local`:
+
+```env
+DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/blogpage_rag
+AI_GATEWAY_API_KEY=tu_key_de_ai_gateway
+ADMIN_PIN=1234
+# opcional; default 2. 0 = sin límite
+# CHAT_MESSAGE_LIMIT=2
+```
+
+`DATABASE_URL` y `AI_GATEWAY_API_KEY` son solo server. Nunca `NEXT_PUBLIC_*`.
+
+La key de AI Gateway se crea en el dashboard de Vercel (AI Gateway). El PIN es el que pedís al crear/editar posts.
+
+### 4. Dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrí [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Inicio: lista de artículos
+- Crear artículo: `/create` (pide PIN)
+- Chat: botón flotante abajo a la derecha
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Para indexar y chatear hace falta publicar al menos un post (status **Publicado**) y tener `AI_GATEWAY_API_KEY`.
 
-## Learn More
+### Scripts
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+App en **Vercel**, DB en **Neon** (mismas tablas). En Vercel seteá `DATABASE_URL` (connection string con pooling), `AI_GATEWAY_API_KEY` y `ADMIN_PIN`.
