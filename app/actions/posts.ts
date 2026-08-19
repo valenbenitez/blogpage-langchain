@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { requireAdmin } from "@/app/actions/auth";
 import { indexPost, unindexPost } from "@/lib/ai/index-post";
 import { createPost, getPostById, updatePost } from "@/lib/db/posts";
 import type { CreatePostInput, Post, PostStatus } from "@/lib/posts/types";
@@ -87,6 +88,11 @@ export async function createPostAction(
     };
   }
 
+  const auth = await requireAdmin();
+  if (!auth.success) {
+    return auth;
+  }
+
   try {
     const post = await createPost(parsed.data);
     await syncPostIndex(post);
@@ -115,6 +121,11 @@ export async function updatePostAction(
       success: false,
       error: parsed.error.issues[0]?.message ?? "Invalid input",
     };
+  }
+
+  const auth = await requireAdmin();
+  if (!auth.success) {
+    return auth;
   }
 
   try {

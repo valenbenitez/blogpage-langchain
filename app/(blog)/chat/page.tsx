@@ -1,5 +1,5 @@
-import { ChatPanel } from "@/entities/chat/ui/ChatPanel";
+import { redirect } from "next/navigation";
 
 export default function ChatPage() {
-  return <ChatPanel />;
+  redirect("/");
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { SiteHeader } from "@/components/site-header";
+import { ChatWidget } from "@/entities/chat/ui/ChatWidget";
 
 import "../globals.css";
 
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             Blogpage RAG
           </div>
         </footer>
+        <ChatWidget />
       </body>
     </html>
   );

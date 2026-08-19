@@ -23,14 +23,6 @@ export function SiteHeader() {
             </li>
             <li>
               <Link
-                href="/chat"
-                className="inline-flex rounded-md px-3 py-2 text-muted transition-colors hover:bg-subtle hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-              >
-                Chat
-              </Link>
-            </li>
-            <li>
-              <Link
                 href="/create"
                 className="inline-flex rounded-md px-3 py-2 text-muted transition-colors hover:bg-subtle hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
               >

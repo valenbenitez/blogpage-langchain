@@ -86,4 +86,5 @@ docs/                # harness + estándares
 
 - `DATABASE_URL` — Postgres local en desarrollo; Neon en Vercel (prod/preview)
 - `AI_GATEWAY_API_KEY` — Vercel AI Gateway
+- `ADMIN_PIN` — PIN para crear/editar posts (cookie httpOnly). No es auth fuerte.
 - Nunca `NEXT_PUBLIC_*` para estas keys
